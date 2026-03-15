@@ -46,12 +46,14 @@ body.no-scroll {
 
 /* Прелоадер: оверлей */
 #preloader,
+.preloader-wrapper,
 .page-wrapper,
 .preloader-icon {
   will-change: opacity, filter, transform;
 }
 
-#preloader {
+#preloader,
+.preloader-wrapper {
   display: flex;
   position: fixed;
   inset: 0;
@@ -66,13 +68,15 @@ body.no-scroll {
 }
 
 /* Состояние: первая загрузка — прелоадер виден, иконка крутится */
-#preloader.active {
+#preloader.active,
+.preloader-wrapper.active {
   opacity: 1;
   pointer-events: auto;
 }
 
 /* Этап 1 перехода: blur контента, но preloader уже блокирует клики */
-#preloader.blur {
+#preloader.blur,
+.preloader-wrapper.blur {
   opacity: 0;
   pointer-events: auto;
   background: transparent;
@@ -80,27 +84,32 @@ body.no-scroll {
 
 /* Этап 2 перехода: чёрный экран и видимая иконка */
 #preloader.end,
-#preloader.cover {
+#preloader.cover,
+.preloader-wrapper.end,
+.preloader-wrapper.cover {
   opacity: 1;
   pointer-events: auto;
   background: var(--black-1000, #010104);
 }
 
 /* Состояние: уход чёрного (reveal новой страницы) */
-#preloader.reveal {
+#preloader.reveal,
+.preloader-wrapper.reveal {
   opacity: 0;
   pointer-events: auto;
 }
 
 /* Состояние: скрытие прелоадера после анимации */
-#preloader.load {
+#preloader.load,
+.preloader-wrapper.load {
   background: transparent;
   opacity: 0;
   pointer-events: none;
 }
 
 /* Иконка-спиннер 4×4rem */
-#preloader .preloader-icon {
+#preloader .preloader-icon,
+.preloader-wrapper .preloader-icon {
   width: 4rem;
   height: 4rem;
   flex-shrink: 0;
@@ -124,12 +133,14 @@ body.no-scroll {
 }
 
 /* Скрытие иконки только при уходе прелоадера (фаза reveal), не при cover — при переходе иконка крутится на чёрном */
-#preloader.load.icon-hide .preloader-icon {
+#preloader.load.icon-hide .preloader-icon,
+.preloader-wrapper.load.icon-hide .preloader-icon {
   opacity: 0;
 }
 
 /* Полное скрытие прелоадера */
-#preloader.close {
+#preloader.close,
+.preloader-wrapper.close {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;

@@ -90,7 +90,7 @@
 
   function getPreloaderEls() {
     return {
-      preloader: document.getElementById("preloader"),
+      preloader: document.getElementById("preloader") || document.querySelector(".preloader-wrapper"),
       pageWrapper: document.querySelector(".page-wrapper"),
       barbaWrapper: document.querySelector("[data-barba='wrapper']"),
       barbaContainer: document.querySelector("[data-barba='container']"),
