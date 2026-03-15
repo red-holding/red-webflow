@@ -4,6 +4,7 @@
  */
 (function () {
   function preventTransition(data) {
+    if (window.location.protocol === "file:") return true;
     var a = data.trigger;
     if (!a || !a.getAttribute("href")) return true;
     var raw = a.getAttribute("href");
@@ -24,6 +25,7 @@
   }
 
   function initBarbaTransitions() {
+    if (window.location.protocol === "file:") return false;
     if (typeof barba === "undefined") return false;
     if (!document.querySelector("[data-barba='wrapper']")) return false;
     if (!document.querySelector("[data-barba='container']")) return false;
