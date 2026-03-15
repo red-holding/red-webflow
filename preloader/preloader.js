@@ -3,6 +3,8 @@
  * Экспортирует в window: __preloaderShowForTransition, __preloaderHideAfterTransition.
  */
 (function () {
+  var LOCAL_TRACE_KEY = "__preloaderAnimationTrace";
+  var LOCAL_TRACE_LIMIT = 400;
   var PRELOADER_ICON_HIDE_MS = 500;  /* через 0.5s скрыть иконку и начать снятие блюра */
   var PRELOADER_TOTAL_MS = 1500;     /* первая загрузка: итого ~1.5s */
   var PRELOADER_UNBLUR_MS = 1000;   /* длительность снятия блюра при первой загрузке */
@@ -16,7 +18,67 @@
   var scrollPosition = 0;
   var lockedScrollLogged = false;
 
+  function safeClone(value) {
+    if (typeof value === "undefined") return null;
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (e) {
+      return String(value);
+    }
+  }
+
+  function getDomSnapshot() {
+    var els = getPreloaderEls();
+    function pick(el) {
+      if (!el) return null;
+      return {
+        className: el.className || "",
+        filter: el.style && el.style.filter ? el.style.filter : "",
+        transition: el.style && el.style.transition ? el.style.transition : "",
+        opacity: el.style && el.style.opacity ? el.style.opacity : ""
+      };
+    }
+    return {
+      href: window.location.href,
+      readyState: document.readyState,
+      scrollY: window.pageYOffset || document.documentElement.scrollTop || 0,
+      preloaderActive: preloaderActive,
+      animationStarted: animationStarted,
+      firstLoadInitStarted: firstLoadInitStarted,
+      bodyNoScroll: document.body.classList.contains("no-scroll"),
+      preloader: pick(els.preloader),
+      pageWrapper: pick(els.pageWrapper),
+      barbaWrapper: pick(els.barbaWrapper),
+      barbaContainer: pick(els.barbaContainer)
+    };
+  }
+
+  function persistLocalTrace(entry) {
+    try {
+      if (!window.localStorage) return;
+      var raw = window.localStorage.getItem(LOCAL_TRACE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) arr = [];
+      arr.push(entry);
+      if (arr.length > LOCAL_TRACE_LIMIT) {
+        arr = arr.slice(arr.length - LOCAL_TRACE_LIMIT);
+      }
+      window.localStorage.setItem(LOCAL_TRACE_KEY, JSON.stringify(arr));
+    } catch (e) {}
+  }
+
   function debugLog(runId, hypothesisId, location, message, data) {
+    var localEntry = {
+      ts: Date.now(),
+      source: "preloader.js",
+      runId: runId,
+      hypothesisId: hypothesisId,
+      location: location,
+      message: message,
+      data: safeClone(data),
+      snapshot: getDomSnapshot()
+    };
+    persistLocalTrace(localEntry);
     // #region agent log
     if (typeof fetch === "function") fetch("http://127.0.0.1:7548/ingest/89c36c11-1e9d-4666-b750-1158af6b5dc7", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "4f333f" }, body: JSON.stringify({ sessionId: "4f333f", runId: runId, hypothesisId: hypothesisId, location: location, message: message, data: data, timestamp: Date.now() }) }).catch(function () {});
     // #endregion
@@ -356,6 +418,18 @@
 
   window.__preloaderShowForTransition = showPreloaderForTransition;
   window.__preloaderHideAfterTransition = hidePreloaderAfterTransition;
+  window.__preloaderReadTrace = function () {
+    try {
+      return JSON.parse(window.localStorage.getItem(LOCAL_TRACE_KEY) || "[]");
+    } catch (e) {
+      return [];
+    }
+  };
+  window.__preloaderClearTrace = function () {
+    try {
+      window.localStorage.removeItem(LOCAL_TRACE_KEY);
+    } catch (e) {}
+  };
 
   document.addEventListener("DOMContentLoaded", initPreloader);
   document.addEventListener("DOMContentLoaded", initHardNavigationFallback);
