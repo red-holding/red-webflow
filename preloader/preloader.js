@@ -13,8 +13,10 @@
   var preloaderActive = false;
   var animationStarted = false;
   var firstLoadInitStarted = false;
+  var navigationInProgress = false;
   var scrollPosition = 0;
   var lockedScrollLogged = false;
+  var SKIP_FIRST_LOAD_KEY = "__preloaderSkipNextFirstLoad";
 
   function debugLog(runId, hypothesisId, location, message, data) {
     // #region agent log
@@ -38,6 +40,25 @@
 
   function getLenisInstance() {
     return window.__lenis || window.lenis || null;
+  }
+
+  function shouldSkipFirstLoadOnce() {
+    try {
+      if (!window.sessionStorage) return false;
+      var value = window.sessionStorage.getItem(SKIP_FIRST_LOAD_KEY);
+      if (value !== "1") return false;
+      window.sessionStorage.removeItem(SKIP_FIRST_LOAD_KEY);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markSkipNextFirstLoad() {
+    try {
+      if (!window.sessionStorage) return;
+      window.sessionStorage.setItem(SKIP_FIRST_LOAD_KEY, "1");
+    } catch (e) {}
   }
 
   function stopLenisScroll() {
@@ -180,8 +201,10 @@
 
   function initPreloader() {
     var shouldRun = shouldRunPreloader();
+    var shouldSkipBySession = shouldSkipFirstLoadOnce();
     debugLog("pre-fix", "H1", "preloader.js:initPreloader", "initPreloader triggered", {
       shouldRun: shouldRun,
+      shouldSkipBySession: shouldSkipBySession,
       readyState: document.readyState,
       animationStarted: animationStarted,
       preloaderActive: preloaderActive,
@@ -190,6 +213,7 @@
       hasBarbaContainer: !!document.querySelector("[data-barba='container']")
     });
     if (!shouldRun) return;
+    if (shouldSkipBySession) return;
     if (firstLoadInitStarted) {
       debugLog("pre-fix", "H1", "preloader.js:initPreloader", "initPreloader skipped because first load already started", {
         readyState: document.readyState
@@ -223,6 +247,8 @@
   }
 
   function showPreloaderForTransition() {
+    navigationInProgress = true;
+    window.__preloaderNavigationInProgress = true;
     resetPreloaderState();
     lockScroll();
     var els = getPreloaderEls();
@@ -294,6 +320,8 @@
         els.preloader.classList.add("icon-hide");
         els.preloader.classList.add("close");
         unlockScroll();
+        navigationInProgress = false;
+        window.__preloaderNavigationInProgress = false;
         debugLog("pre-fix", "H3", "preloader.js:hidePreloaderAfterTransition:done", "hidePreloaderAfterTransition completed", {
           preloaderClassName: els.preloader.className
         });
@@ -339,9 +367,9 @@
     if (window.__preloaderHardNavBound) return;
     window.__preloaderHardNavBound = true;
     document.addEventListener("click", function (ev) {
-      if (!shouldUseHardNavigationFallback()) return;
       var link = ev.target && ev.target.closest ? ev.target.closest("a[href]") : null;
       if (!shouldInterceptLinkClick(link, ev)) return;
+      if (navigationInProgress || window.__preloaderNavigationInProgress) return;
       ev.preventDefault();
       var nextUrl;
       try {
@@ -351,6 +379,17 @@
         return;
       }
       showPreloaderForTransition().then(function () {
+        var canUseBarba = typeof window.barba !== "undefined" &&
+          typeof window.barba.go === "function" &&
+          !!window.__barbaPreloaderInitDone;
+        if (canUseBarba) {
+          window.barba.go(nextUrl);
+          return;
+        }
+        markSkipNextFirstLoad();
+        window.location.href = nextUrl;
+      }).catch(function () {
+        markSkipNextFirstLoad();
         window.location.href = nextUrl;
       });
     }, true);
