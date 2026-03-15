@@ -1,4 +1,3 @@
-@@ -0,0 +1,237 @@
 /**
  * Preloader: первая загрузка и переходы (Barba).
  * Экспортирует в window: __preloaderShowForTransition, __preloaderHideAfterTransition.
