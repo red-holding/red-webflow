@@ -1,0 +1,1 @@
+let ticking=!1;function updateOpacity(){document.getElementById("hero");let t=window.scrollY,e=window.innerHeight,i=document.querySelector(".scroll-opacity");i.style.opacity=Math.max(.2,1-Math.min(t/e,1)),ticking=!1}window.addEventListener("scroll",()=>{ticking||(requestAnimationFrame(updateOpacity),ticking=!0)},{passive:!0}),updateOpacity();
