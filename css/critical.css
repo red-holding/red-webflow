@@ -351,3 +351,11 @@ body {
     display: none;
   }
 }
+.pattern-color-gradient {
+  -webkit-mask-image: url('https://cdn.prod.website-files.com/68c29ced9f49825cfe3be778/68d9584b16786469febf5a0e_animations-pattern.svg'); /* Используйте префикс для совместимости */
+  mask-image: url('https://cdn.prod.website-files.com/68c29ced9f49825cfe3be778/68d9584b16786469febf5a0e_animations-pattern.svg');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}  
