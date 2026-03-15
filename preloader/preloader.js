@@ -1,130 +1,27 @@
+@@ -0,0 +1,237 @@
 /**
  * Preloader: первая загрузка и переходы (Barba).
  * Экспортирует в window: __preloaderShowForTransition, __preloaderHideAfterTransition.
  */
 (function () {
-  var LOCAL_TRACE_KEY = "__preloaderAnimationTrace";
-  var LOCAL_TRACE_LIMIT = 400;
   var PRELOADER_ICON_HIDE_MS = 500;  /* через 0.5s скрыть иконку и начать снятие блюра */
   var PRELOADER_TOTAL_MS = 1500;     /* первая загрузка: итого ~1.5s */
   var PRELOADER_UNBLUR_MS = 1000;   /* длительность снятия блюра при первой загрузке */
-  var TRANSITION_BLUR_MS = 380;      /* этап 1: блюр на странице выхода */
-  var TRANSITION_END_MS = 260;       /* этап 2: уход в чёрный до Barba swap */
-  var TRANSITION_UNBLUR_MS = 820;    /* снятие блюра на новой странице */
+  var TRANSITION_BLUR_MS = 700;      /* этап 1: блюр */
+  var TRANSITION_END_MS = 700;       /* этап 2: уход в чёрный (до вызова Barba swap) */
+  var TRANSITION_UNBLUR_MS = 1200;   /* снятие блюра на новой странице */
   var TRANSITION_BLUR_PX = 16;
-  var USE_CONTENT_FILTER_BLUR = false; /* Контентный blur ломает layout на Webflow, используем blur-оверлей. */
   var preloaderActive = false;
   var animationStarted = false;
-  var firstLoadInitStarted = false;
   var scrollPosition = 0;
-  var lockedScrollLogged = false;
-
-  function safeClone(value) {
-    if (typeof value === "undefined") return null;
-    try {
-      return JSON.parse(JSON.stringify(value));
-    } catch (e) {
-      return String(value);
-    }
-  }
-
-  function getDomSnapshot() {
-    var els = getPreloaderEls();
-    function pick(el) {
-      if (!el) return null;
-      return {
-        className: el.className || "",
-        filter: el.style && el.style.filter ? el.style.filter : "",
-        transition: el.style && el.style.transition ? el.style.transition : "",
-        opacity: el.style && el.style.opacity ? el.style.opacity : ""
-      };
-    }
-    return {
-      href: window.location.href,
-      readyState: document.readyState,
-      scrollY: window.pageYOffset || document.documentElement.scrollTop || 0,
-      preloaderActive: preloaderActive,
-      animationStarted: animationStarted,
-      firstLoadInitStarted: firstLoadInitStarted,
-      bodyNoScroll: document.body.classList.contains("no-scroll"),
-      preloader: pick(els.preloader),
-      pageWrapper: pick(els.pageWrapper),
-      barbaWrapper: pick(els.barbaWrapper),
-      barbaContainer: pick(els.barbaContainer)
-    };
-  }
-
-  function persistLocalTrace(entry) {
-    try {
-      if (!window.localStorage) return;
-      var raw = window.localStorage.getItem(LOCAL_TRACE_KEY);
-      var arr = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(arr)) arr = [];
-      arr.push(entry);
-      if (arr.length > LOCAL_TRACE_LIMIT) {
-        arr = arr.slice(arr.length - LOCAL_TRACE_LIMIT);
-      }
-      window.localStorage.setItem(LOCAL_TRACE_KEY, JSON.stringify(arr));
-    } catch (e) {}
-  }
-
-  function debugLog(runId, hypothesisId, location, message, data) {
-    var localEntry = {
-      ts: Date.now(),
-      source: "preloader.js",
-      runId: runId,
-      hypothesisId: hypothesisId,
-      location: location,
-      message: message,
-      data: safeClone(data),
-      snapshot: getDomSnapshot()
-    };
-    persistLocalTrace(localEntry);
-    // #region agent log
-    if (typeof fetch === "function") fetch("http://127.0.0.1:7548/ingest/89c36c11-1e9d-4666-b750-1158af6b5dc7", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "4f333f" }, body: JSON.stringify({ sessionId: "4f333f", runId: runId, hypothesisId: hypothesisId, location: location, message: message, data: data, timestamp: Date.now() }) }).catch(function () {});
-    // #endregion
-  }
-  debugLog("pre-fix", "H6", "preloader.js:bootstrap", "preloader script bootstrap executed", {
-    href: window.location.href,
-    readyState: document.readyState
-  });
 
   function getPreloaderEls() {
     return {
-      preloader: document.getElementById("preloader") || document.querySelector(".preloader-wrapper"),
+      preloader: document.getElementById("preloader"),
       pageWrapper: document.querySelector(".page-wrapper"),
-      barbaWrapper: document.querySelector("[data-barba='wrapper']"),
-      barbaContainer: document.querySelector("[data-barba='container']"),
-      transitionTarget: document.querySelector(".page-wrapper")
+      /* При переходе Barba блюрим обёртку — контейнер может подменяться и блюр теряется */
+      transitionTarget: document.querySelector("[data-barba='wrapper']") || document.querySelector(".page-wrapper")
     };
-  }
-
-  function getLenisInstance() {
-    return window.__lenis || window.lenis || null;
-  }
-
-  function stopLenisScroll() {
-    var lenis = getLenisInstance();
-    if (!lenis || typeof lenis.stop !== "function") return;
-    try {
-      lenis.stop();
-    } catch (e) {
-      debugLog("pre-fix", "H4", "preloader.js:stopLenisScroll", "lenis.stop failed", {
-        error: String(e && e.message || e)
-      });
-    }
-  }
-
-  function startLenisScroll() {
-    var lenis = getLenisInstance();
-    if (!lenis || typeof lenis.start !== "function") return;
-    try {
-      lenis.start();
-    } catch (e) {
-      debugLog("pre-fix", "H4", "preloader.js:startLenisScroll", "lenis.start failed", {
-        error: String(e && e.message || e)
-      });
-    }
   }
 
   function resetPreloaderState() {
@@ -134,17 +31,7 @@
     els.pageWrapper.classList.remove("load", "transition-blur", "blur");
     els.pageWrapper.style.transition = "";
     els.pageWrapper.style.filter = "";
-    if (els.barbaWrapper && els.barbaWrapper !== els.pageWrapper) {
-      els.barbaWrapper.classList.remove("load", "transition-blur", "blur");
-      els.barbaWrapper.style.transition = "";
-      els.barbaWrapper.style.filter = "";
-    }
-    if (els.barbaContainer && els.barbaContainer !== els.pageWrapper && els.barbaContainer !== els.barbaWrapper) {
-      els.barbaContainer.classList.remove("load", "transition-blur", "blur");
-      els.barbaContainer.style.transition = "";
-      els.barbaContainer.style.filter = "";
-    }
-    if (els.transitionTarget && els.transitionTarget !== els.pageWrapper && els.transitionTarget !== els.barbaWrapper && els.transitionTarget !== els.barbaContainer) {
+    if (els.transitionTarget && els.transitionTarget !== els.pageWrapper) {
       els.transitionTarget.classList.remove("load", "transition-blur", "blur");
       els.transitionTarget.style.transition = "";
       els.transitionTarget.style.filter = "";
@@ -163,49 +50,23 @@
   function lockScroll() {
     if (preloaderActive) return;
     preloaderActive = true;
-    lockedScrollLogged = false;
     scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-    debugLog("pre-fix", "H4", "preloader.js:lockScroll", "lockScroll called", {
-      scrollPosition: scrollPosition,
-      bodyNoScrollBefore: document.body.classList.contains("no-scroll"),
-      htmlClassName: document.documentElement.className
-    });
     document.body.style.top = "-" + scrollPosition + "px";
     document.body.classList.add("no-scroll");
-    stopLenisScroll();
   }
 
-  function unlockScroll(options) {
-    var opts = options || {};
-    var shouldRestoreScroll = !!opts.restoreScroll;
-    debugLog("pre-fix", "H5", "preloader.js:unlockScroll:before", "unlockScroll before restore", {
-      savedScrollPosition: scrollPosition,
-      currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
-      bodyNoScrollBefore: document.body.classList.contains("no-scroll"),
-      shouldRestoreScroll: shouldRestoreScroll
-    });
+  function unlockScroll() {
     preloaderActive = false;
     animationStarted = false;
     document.body.classList.remove("no-scroll");
     document.body.style.top = "";
-    if (shouldRestoreScroll) window.scrollTo(0, scrollPosition);
-    startLenisScroll();
-    debugLog("pre-fix", "H5", "preloader.js:unlockScroll:after", "unlockScroll after restore", {
-      savedScrollPosition: scrollPosition,
-      currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
-      bodyNoScrollAfter: document.body.classList.contains("no-scroll")
-    });
+    window.scrollTo(0, scrollPosition);
   }
 
   function startPreloaderAnimation() {
     if (animationStarted) return;
     animationStarted = true;
     var els = getPreloaderEls();
-    debugLog("pre-fix", "H1", "preloader.js:startPreloaderAnimation:entry", "startPreloaderAnimation entry", {
-      hasPreloader: !!(els && els.preloader),
-      hasPageWrapper: !!(els && els.pageWrapper),
-      preloaderClassName: els && els.preloader ? els.preloader.className : null
-    });
     if (!els.preloader || !els.pageWrapper) {
       unlockScroll();
       return;
@@ -216,17 +77,8 @@
       els.preloader.classList.add("icon-hide");
       els.preloader.classList.add("load");
       els.preloader.classList.remove("end", "blur", "active");
-      debugLog("pre-fix", "H2", "preloader.js:startPreloaderAnimation:phase", "first-load classes switched to load/icon-hide", {
-        preloaderClassName: els.preloader.className,
-        pageWrapperClassName: els.pageWrapper.className
-      });
-      var firstLoadTargets = getBlurTargets(els);
-      firstLoadTargets.forEach(function (target) {
-        target.style.transition = "filter " + PRELOADER_UNBLUR_MS + "ms " + easing;
-        target.classList.add("load");
-        target.classList.remove("blur");
-        target.style.filter = "blur(0px)";
-      });
+      els.pageWrapper.style.transition = "filter " + PRELOADER_UNBLUR_MS + "ms " + easing;
+      els.pageWrapper.classList.add("load");
       setTimeout(function () {
         els.preloader.classList.add("close");
         unlockScroll();
@@ -242,45 +94,15 @@
   }
 
   function initPreloader() {
-    var shouldRun = shouldRunPreloader();
-    debugLog("pre-fix", "H1", "preloader.js:initPreloader", "initPreloader triggered", {
-      shouldRun: shouldRun,
-      readyState: document.readyState,
-      animationStarted: animationStarted,
-      preloaderActive: preloaderActive,
-      hasPreloaderEl: !!document.getElementById("preloader"),
-      hasBarbaWrapper: !!document.querySelector("[data-barba='wrapper']"),
-      hasBarbaContainer: !!document.querySelector("[data-barba='container']")
-    });
-    if (!shouldRun) return;
-    if (firstLoadInitStarted) {
-      debugLog("pre-fix", "H1", "preloader.js:initPreloader", "initPreloader skipped because first load already started", {
-        readyState: document.readyState
-      });
-      return;
-    }
-    firstLoadInitStarted = true;
-    var els = getPreloaderEls();
-    if (els.preloader) {
-      /* Ensure first load starts from a visible overlay state. */
-      els.preloader.classList.remove("load", "close", "icon-hide", "blur", "end");
-      els.preloader.classList.add("active");
-    }
-    getBlurTargets(els).forEach(function (target) {
-      target.classList.remove("load");
-      target.classList.add("blur");
-      target.style.filter = "blur(" + TRANSITION_BLUR_PX + "px)";
-    });
+    if (!shouldRunPreloader()) return;
     lockScroll();
     requestAnimationFrame(startPreloaderAnimation);
   }
 
   function getBlurTargets(els) {
-    if (!USE_CONTENT_FILTER_BLUR) return [];
     var targets = [];
-    /* Один blur-таргет: избегаем двойного блюра и layout jitter на вложенных контейнерах. */
-    var preferred = els.barbaContainer || els.pageWrapper || els.transitionTarget;
-    if (preferred) targets.push(preferred);
+    if (els.transitionTarget) targets.push(els.transitionTarget);
+    if (els.pageWrapper && targets.indexOf(els.pageWrapper) === -1) targets.push(els.pageWrapper);
     return targets;
   }
 
@@ -288,12 +110,6 @@
     resetPreloaderState();
     lockScroll();
     var els = getPreloaderEls();
-    debugLog("pre-fix", "H3", "preloader.js:showPreloaderForTransition:entry", "showPreloaderForTransition called", {
-      hasPreloader: !!(els && els.preloader),
-      hasPageWrapper: !!(els && els.pageWrapper),
-      hasTransitionTarget: !!(els && els.transitionTarget),
-      preloaderClassName: els && els.preloader ? els.preloader.className : null
-    });
     if (!els.preloader || !els.pageWrapper) return Promise.resolve();
     var easing = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
     var blurTargets = getBlurTargets(els);
@@ -314,9 +130,6 @@
       setTimeout(function () {
         els.preloader.classList.remove("blur");
         els.preloader.classList.add("end");
-        debugLog("pre-fix", "H2", "preloader.js:showPreloaderForTransition:toEnd", "transition switched to end", {
-          preloaderClassName: els.preloader.className
-        });
         setTimeout(resolve, TRANSITION_END_MS);
       }, TRANSITION_BLUR_MS);
     });
@@ -324,11 +137,6 @@
 
   function hidePreloaderAfterTransition() {
     var els = getPreloaderEls();
-    debugLog("pre-fix", "H3", "preloader.js:hidePreloaderAfterTransition:entry", "hidePreloaderAfterTransition called", {
-      hasPreloader: !!(els && els.preloader),
-      hasPageWrapper: !!(els && els.pageWrapper),
-      hasTransitionTarget: !!(els && els.transitionTarget)
-    });
     if (!els.preloader || !els.pageWrapper) return Promise.resolve();
     var targets = getBlurTargets(els);
     var easing = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
@@ -356,9 +164,6 @@
         els.preloader.classList.add("icon-hide");
         els.preloader.classList.add("close");
         unlockScroll();
-        debugLog("pre-fix", "H3", "preloader.js:hidePreloaderAfterTransition:done", "hidePreloaderAfterTransition completed", {
-          preloaderClassName: els.preloader.className
-        });
         resolve();
       }, TRANSITION_UNBLUR_MS);
     });
@@ -420,34 +225,12 @@
 
   window.__preloaderShowForTransition = showPreloaderForTransition;
   window.__preloaderHideAfterTransition = hidePreloaderAfterTransition;
-  window.__preloaderReadTrace = function () {
-    try {
-      return JSON.parse(window.localStorage.getItem(LOCAL_TRACE_KEY) || "[]");
-    } catch (e) {
-      return [];
-    }
-  };
-  window.__preloaderClearTrace = function () {
-    try {
-      window.localStorage.removeItem(LOCAL_TRACE_KEY);
-    } catch (e) {}
-  };
 
   document.addEventListener("DOMContentLoaded", initPreloader);
   document.addEventListener("DOMContentLoaded", initHardNavigationFallback);
-  window.addEventListener("scroll", function () {
-    if (!preloaderActive || lockedScrollLogged) return;
-    lockedScrollLogged = true;
-    debugLog("pre-fix", "H4", "preloader.js:scrollWhileLocked", "scroll happened while preloaderActive", {
-      currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
-      bodyNoScroll: document.body.classList.contains("no-scroll"),
-      htmlClassName: document.documentElement.className
-    });
-  }, { passive: true });
   window.addEventListener("load", initPreloader);
   window.addEventListener("pageshow", function (ev) {
     if (ev.persisted) {
-      firstLoadInitStarted = false;
       resetPreloaderState();
       initPreloader();
     }
