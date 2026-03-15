@@ -12,6 +12,7 @@
   var TRANSITION_END_MS = 260;       /* этап 2: уход в чёрный до Barba swap */
   var TRANSITION_UNBLUR_MS = 820;    /* снятие блюра на новой странице */
   var TRANSITION_BLUR_PX = 16;
+  var USE_CONTENT_FILTER_BLUR = false; /* Контентный blur ломает layout на Webflow, используем blur-оверлей. */
   var preloaderActive = false;
   var animationStarted = false;
   var firstLoadInitStarted = false;
@@ -275,6 +276,7 @@
   }
 
   function getBlurTargets(els) {
+    if (!USE_CONTENT_FILTER_BLUR) return [];
     var targets = [];
     /* Один blur-таргет: избегаем двойного блюра и layout jitter на вложенных контейнерах. */
     var preferred = els.barbaContainer || els.pageWrapper || els.transitionTarget;

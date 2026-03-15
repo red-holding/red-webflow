@@ -21,7 +21,7 @@ body.no-scroll {
 
 .page-wrapper.transition-blur,
 .page-wrapper.blur {
-  filter: blur(16px) !important;
+  filter: none !important;
 }
 
 .page-wrapper.load {
@@ -37,7 +37,7 @@ body.no-scroll {
 
 [data-barba="wrapper"].transition-blur,
 [data-barba="wrapper"].blur {
-  filter: blur(16px) !important;
+  filter: none !important;
 }
 
 [data-barba="wrapper"].load {
@@ -77,9 +77,11 @@ body.no-scroll {
 /* Этап 1 перехода: blur контента, но preloader уже блокирует клики */
 #preloader.blur,
 .preloader-wrapper.blur {
-  opacity: 0;
+  opacity: 1;
   pointer-events: auto;
-  background: transparent;
+  background: rgba(1, 1, 4, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* Этап 2 перехода: чёрный экран и видимая иконка */
