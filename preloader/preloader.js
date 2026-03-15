@@ -6,9 +6,9 @@
   var PRELOADER_ICON_HIDE_MS = 500;  /* через 0.5s скрыть иконку и начать снятие блюра */
   var PRELOADER_TOTAL_MS = 1500;     /* первая загрузка: итого ~1.5s */
   var PRELOADER_UNBLUR_MS = 1000;   /* длительность снятия блюра при первой загрузке */
-  var TRANSITION_BLUR_MS = 700;      /* этап 1: блюр */
-  var TRANSITION_END_MS = 700;       /* этап 2: уход в чёрный (до вызова Barba swap) */
-  var TRANSITION_UNBLUR_MS = 1200;   /* снятие блюра на новой странице */
+  var TRANSITION_BLUR_MS = 380;      /* этап 1: блюр на странице выхода */
+  var TRANSITION_END_MS = 260;       /* этап 2: уход в чёрный до Barba swap */
+  var TRANSITION_UNBLUR_MS = 820;    /* снятие блюра на новой странице */
   var TRANSITION_BLUR_PX = 16;
   var preloaderActive = false;
   var animationStarted = false;
@@ -30,8 +30,9 @@
     return {
       preloader: document.getElementById("preloader"),
       pageWrapper: document.querySelector(".page-wrapper"),
-      /* При переходе Barba блюрим обёртку — контейнер может подменяться и блюр теряется */
-      transitionTarget: document.querySelector("[data-barba='wrapper']") || document.querySelector(".page-wrapper")
+      barbaWrapper: document.querySelector("[data-barba='wrapper']"),
+      barbaContainer: document.querySelector("[data-barba='container']"),
+      transitionTarget: document.querySelector(".page-wrapper")
     };
   }
 
@@ -70,7 +71,17 @@
     els.pageWrapper.classList.remove("load", "transition-blur", "blur");
     els.pageWrapper.style.transition = "";
     els.pageWrapper.style.filter = "";
-    if (els.transitionTarget && els.transitionTarget !== els.pageWrapper) {
+    if (els.barbaWrapper && els.barbaWrapper !== els.pageWrapper) {
+      els.barbaWrapper.classList.remove("load", "transition-blur", "blur");
+      els.barbaWrapper.style.transition = "";
+      els.barbaWrapper.style.filter = "";
+    }
+    if (els.barbaContainer && els.barbaContainer !== els.pageWrapper && els.barbaContainer !== els.barbaWrapper) {
+      els.barbaContainer.classList.remove("load", "transition-blur", "blur");
+      els.barbaContainer.style.transition = "";
+      els.barbaContainer.style.filter = "";
+    }
+    if (els.transitionTarget && els.transitionTarget !== els.pageWrapper && els.transitionTarget !== els.barbaWrapper && els.transitionTarget !== els.barbaContainer) {
       els.transitionTarget.classList.remove("load", "transition-blur", "blur");
       els.transitionTarget.style.transition = "";
       els.transitionTarget.style.filter = "";
@@ -146,8 +157,13 @@
         preloaderClassName: els.preloader.className,
         pageWrapperClassName: els.pageWrapper.className
       });
-      els.pageWrapper.style.transition = "filter " + PRELOADER_UNBLUR_MS + "ms " + easing;
-      els.pageWrapper.classList.add("load");
+      var firstLoadTargets = getBlurTargets(els);
+      firstLoadTargets.forEach(function (target) {
+        target.style.transition = "filter " + PRELOADER_UNBLUR_MS + "ms " + easing;
+        target.classList.add("load");
+        target.classList.remove("blur");
+        target.style.filter = "blur(0px)";
+      });
       setTimeout(function () {
         els.preloader.classList.add("close");
         unlockScroll();
@@ -187,14 +203,22 @@
       els.preloader.classList.remove("load", "close", "icon-hide", "blur", "end");
       els.preloader.classList.add("active");
     }
+    getBlurTargets(els).forEach(function (target) {
+      target.classList.remove("load");
+      target.classList.add("blur");
+      target.style.filter = "blur(" + TRANSITION_BLUR_PX + "px)";
+    });
     lockScroll();
     requestAnimationFrame(startPreloaderAnimation);
   }
 
   function getBlurTargets(els) {
     var targets = [];
-    if (els.transitionTarget) targets.push(els.transitionTarget);
-    if (els.pageWrapper && targets.indexOf(els.pageWrapper) === -1) targets.push(els.pageWrapper);
+    var preferred = els.barbaContainer || els.pageWrapper || els.transitionTarget;
+    if (preferred) targets.push(preferred);
+    /* Не блюрим wrapper, если внутри него расположен preloader: это ломает визуальный порядок фаз. */
+    var canUseWrapper = !!els.barbaWrapper && !!els.preloader && !els.barbaWrapper.contains(els.preloader);
+    if (canUseWrapper && targets.indexOf(els.barbaWrapper) === -1) targets.push(els.barbaWrapper);
     return targets;
   }
 

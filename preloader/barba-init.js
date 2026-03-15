@@ -28,18 +28,6 @@
     if (!/^https?:$/i.test(url.protocol)) return true;
     if (url.origin !== window.location.origin) return true;
     if (url.hash && url.pathname === window.location.pathname && url.search === window.location.search) return true;
-    if (a.closest(".w-pagination-wrapper") || a.closest("[class*='pagination']") || a.closest("[data-w-id*='pagination']")) {
-      debugLog("pre-fix", "H3", "barba-init.js:preventTransition", "transition prevented by pagination selector", { href: raw, pathname: url.pathname, search: url.search });
-      return true;
-    }
-    if (url.search && /_page=\d+/.test(url.search)) {
-      debugLog("pre-fix", "H3", "barba-init.js:preventTransition", "transition prevented by _page query", { href: raw, pathname: url.pathname, search: url.search });
-      return true;
-    }
-    if (/\/post\/\w+\/\d{4,}/.test(url.pathname) || /\/p\/\d+/.test(url.pathname)) {
-      debugLog("pre-fix", "H3", "barba-init.js:preventTransition", "transition prevented by pathname regex", { href: raw, pathname: url.pathname, search: url.search });
-      return true;
-    }
     debugLog("pre-fix", "H3", "barba-init.js:preventTransition", "transition allowed", { href: raw, pathname: url.pathname, search: url.search });
     return false;
   }
