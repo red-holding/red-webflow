@@ -168,10 +168,65 @@
     });
   }
 
+  function shouldUseHardNavigationFallback() {
+    if (window.location.protocol === "file:") return true;
+    if (typeof window.barba === "undefined") return true;
+    if (!document.querySelector("[data-barba='wrapper']")) return true;
+    if (!document.querySelector("[data-barba='container']")) return true;
+    return false;
+  }
+
+  function shouldInterceptLinkClick(link, ev) {
+    if (!link || !link.getAttribute("href")) return false;
+    if (ev.defaultPrevented) return false;
+    if (ev.button !== 0) return false;
+    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return false;
+    var raw = link.getAttribute("href");
+    if (!raw || raw.charAt(0) === "#") return false;
+    if (/^mailto:/i.test(raw) || /^tel:/i.test(raw) || /^javascript:/i.test(raw)) return false;
+    if (link.target === "_blank") return false;
+    if (link.hasAttribute("download")) return false;
+    var url;
+    try {
+      url = new URL(raw, window.location.href);
+    } catch (e) {
+      return false;
+    }
+    var isHttp = /^https?:$/i.test(url.protocol);
+    var isFile = /^file:$/i.test(url.protocol);
+    if (!isHttp && !isFile) return false;
+    if (isHttp && url.origin !== window.location.origin) return false;
+    if (isFile && window.location.protocol !== "file:") return false;
+    if (url.hash && url.pathname === window.location.pathname && url.search === window.location.search) return false;
+    return true;
+  }
+
+  function initHardNavigationFallback() {
+    if (window.__preloaderHardNavBound) return;
+    window.__preloaderHardNavBound = true;
+    document.addEventListener("click", function (ev) {
+      if (!shouldUseHardNavigationFallback()) return;
+      var link = ev.target && ev.target.closest ? ev.target.closest("a[href]") : null;
+      if (!shouldInterceptLinkClick(link, ev)) return;
+      ev.preventDefault();
+      var nextUrl;
+      try {
+        nextUrl = new URL(link.getAttribute("href"), window.location.href).href;
+      } catch (e) {
+        window.location.href = link.getAttribute("href");
+        return;
+      }
+      showPreloaderForTransition().then(function () {
+        window.location.href = nextUrl;
+      });
+    }, true);
+  }
+
   window.__preloaderShowForTransition = showPreloaderForTransition;
   window.__preloaderHideAfterTransition = hidePreloaderAfterTransition;
 
   document.addEventListener("DOMContentLoaded", initPreloader);
+  document.addEventListener("DOMContentLoaded", initHardNavigationFallback);
   window.addEventListener("load", initPreloader);
   window.addEventListener("pageshow", function (ev) {
     if (ev.persisted) {
