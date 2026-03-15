@@ -1,0 +1,24 @@
+---
+description: Analyze Webflow and suggest changes, but do not edit live project
+alwaysApply: true
+---
+
+# Manual Webflow Workflow
+
+## Core principle
+
+- Treat this project as analysis-first for Webflow.
+- Review and diagnose issues in Webflow and repository files.
+- Propose clear, prioritized improvements and implementation steps.
+
+## Editing constraints
+
+- Do not make direct changes in the live Webflow project.
+- Do not execute write operations in Webflow via MCP tools.
+- Do not auto-apply fixes unless explicitly requested for local code artifacts.
+
+## Expected output style
+
+- Provide root cause analysis before recommendations.
+- Give actionable manual steps for implementation in Webflow Designer.
+- When useful, include a short validation checklist for manual QA after edits.

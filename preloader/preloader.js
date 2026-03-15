@@ -13,6 +13,17 @@
   var preloaderActive = false;
   var animationStarted = false;
   var scrollPosition = 0;
+  var lockedScrollLogged = false;
+
+  function debugLog(runId, hypothesisId, location, message, data) {
+    // #region agent log
+    if (typeof fetch === "function") fetch("http://127.0.0.1:7548/ingest/89c36c11-1e9d-4666-b750-1158af6b5dc7", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "4f333f" }, body: JSON.stringify({ sessionId: "4f333f", runId: runId, hypothesisId: hypothesisId, location: location, message: message, data: data, timestamp: Date.now() }) }).catch(function () {});
+    // #endregion
+  }
+  debugLog("pre-fix", "H6", "preloader.js:bootstrap", "preloader script bootstrap executed", {
+    href: window.location.href,
+    readyState: document.readyState
+  });
 
   function getPreloaderEls() {
     return {
@@ -50,22 +61,42 @@
     if (preloaderActive) return;
     preloaderActive = true;
     scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    debugLog("pre-fix", "H4", "preloader.js:lockScroll", "lockScroll called", {
+      scrollPosition: scrollPosition,
+      bodyNoScrollBefore: document.body.classList.contains("no-scroll"),
+      htmlClassName: document.documentElement.className
+    });
     document.body.style.top = "-" + scrollPosition + "px";
     document.body.classList.add("no-scroll");
   }
 
   function unlockScroll() {
+    debugLog("pre-fix", "H5", "preloader.js:unlockScroll:before", "unlockScroll before restore", {
+      savedScrollPosition: scrollPosition,
+      currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
+      bodyNoScrollBefore: document.body.classList.contains("no-scroll")
+    });
     preloaderActive = false;
     animationStarted = false;
     document.body.classList.remove("no-scroll");
     document.body.style.top = "";
     window.scrollTo(0, scrollPosition);
+    debugLog("pre-fix", "H5", "preloader.js:unlockScroll:after", "unlockScroll after restore", {
+      savedScrollPosition: scrollPosition,
+      currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
+      bodyNoScrollAfter: document.body.classList.contains("no-scroll")
+    });
   }
 
   function startPreloaderAnimation() {
     if (animationStarted) return;
     animationStarted = true;
     var els = getPreloaderEls();
+    debugLog("pre-fix", "H1", "preloader.js:startPreloaderAnimation:entry", "startPreloaderAnimation entry", {
+      hasPreloader: !!(els && els.preloader),
+      hasPageWrapper: !!(els && els.pageWrapper),
+      preloaderClassName: els && els.preloader ? els.preloader.className : null
+    });
     if (!els.preloader || !els.pageWrapper) {
       unlockScroll();
       return;
@@ -76,6 +107,10 @@
       els.preloader.classList.add("icon-hide");
       els.preloader.classList.add("load");
       els.preloader.classList.remove("end", "blur", "active");
+      debugLog("pre-fix", "H2", "preloader.js:startPreloaderAnimation:phase", "first-load classes switched to load/icon-hide", {
+        preloaderClassName: els.preloader.className,
+        pageWrapperClassName: els.pageWrapper.className
+      });
       els.pageWrapper.style.transition = "filter " + PRELOADER_UNBLUR_MS + "ms " + easing;
       els.pageWrapper.classList.add("load");
       setTimeout(function () {
@@ -93,7 +128,17 @@
   }
 
   function initPreloader() {
-    if (!shouldRunPreloader()) return;
+    var shouldRun = shouldRunPreloader();
+    debugLog("pre-fix", "H1", "preloader.js:initPreloader", "initPreloader triggered", {
+      shouldRun: shouldRun,
+      readyState: document.readyState,
+      animationStarted: animationStarted,
+      preloaderActive: preloaderActive,
+      hasPreloaderEl: !!document.getElementById("preloader"),
+      hasBarbaWrapper: !!document.querySelector("[data-barba='wrapper']"),
+      hasBarbaContainer: !!document.querySelector("[data-barba='container']")
+    });
+    if (!shouldRun) return;
     lockScroll();
     requestAnimationFrame(startPreloaderAnimation);
   }
@@ -109,6 +154,12 @@
     resetPreloaderState();
     lockScroll();
     var els = getPreloaderEls();
+    debugLog("pre-fix", "H3", "preloader.js:showPreloaderForTransition:entry", "showPreloaderForTransition called", {
+      hasPreloader: !!(els && els.preloader),
+      hasPageWrapper: !!(els && els.pageWrapper),
+      hasTransitionTarget: !!(els && els.transitionTarget),
+      preloaderClassName: els && els.preloader ? els.preloader.className : null
+    });
     if (!els.preloader || !els.pageWrapper) return Promise.resolve();
     var easing = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
     var blurTargets = getBlurTargets(els);
@@ -129,6 +180,9 @@
       setTimeout(function () {
         els.preloader.classList.remove("blur");
         els.preloader.classList.add("end");
+        debugLog("pre-fix", "H2", "preloader.js:showPreloaderForTransition:toEnd", "transition switched to end", {
+          preloaderClassName: els.preloader.className
+        });
         setTimeout(resolve, TRANSITION_END_MS);
       }, TRANSITION_BLUR_MS);
     });
@@ -136,6 +190,11 @@
 
   function hidePreloaderAfterTransition() {
     var els = getPreloaderEls();
+    debugLog("pre-fix", "H3", "preloader.js:hidePreloaderAfterTransition:entry", "hidePreloaderAfterTransition called", {
+      hasPreloader: !!(els && els.preloader),
+      hasPageWrapper: !!(els && els.pageWrapper),
+      hasTransitionTarget: !!(els && els.transitionTarget)
+    });
     if (!els.preloader || !els.pageWrapper) return Promise.resolve();
     var targets = getBlurTargets(els);
     var easing = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
@@ -163,6 +222,9 @@
         els.preloader.classList.add("icon-hide");
         els.preloader.classList.add("close");
         unlockScroll();
+        debugLog("pre-fix", "H3", "preloader.js:hidePreloaderAfterTransition:done", "hidePreloaderAfterTransition completed", {
+          preloaderClassName: els.preloader.className
+        });
         resolve();
       }, TRANSITION_UNBLUR_MS);
     });
@@ -227,6 +289,15 @@
 
   document.addEventListener("DOMContentLoaded", initPreloader);
   document.addEventListener("DOMContentLoaded", initHardNavigationFallback);
+  window.addEventListener("scroll", function () {
+    if (!preloaderActive || lockedScrollLogged) return;
+    lockedScrollLogged = true;
+    debugLog("pre-fix", "H4", "preloader.js:scrollWhileLocked", "scroll happened while preloaderActive", {
+      currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
+      bodyNoScroll: document.body.classList.contains("no-scroll"),
+      htmlClassName: document.documentElement.className
+    });
+  }, { passive: true });
   window.addEventListener("load", initPreloader);
   window.addEventListener("pageshow", function (ev) {
     if (ev.persisted) {
