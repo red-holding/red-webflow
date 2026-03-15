@@ -12,6 +12,7 @@
   var TRANSITION_BLUR_PX = 16;
   var preloaderActive = false;
   var animationStarted = false;
+  var firstLoadInitStarted = false;
   var scrollPosition = 0;
   var lockedScrollLogged = false;
 
@@ -32,6 +33,34 @@
       /* При переходе Barba блюрим обёртку — контейнер может подменяться и блюр теряется */
       transitionTarget: document.querySelector("[data-barba='wrapper']") || document.querySelector(".page-wrapper")
     };
+  }
+
+  function getLenisInstance() {
+    return window.__lenis || window.lenis || null;
+  }
+
+  function stopLenisScroll() {
+    var lenis = getLenisInstance();
+    if (!lenis || typeof lenis.stop !== "function") return;
+    try {
+      lenis.stop();
+    } catch (e) {
+      debugLog("pre-fix", "H4", "preloader.js:stopLenisScroll", "lenis.stop failed", {
+        error: String(e && e.message || e)
+      });
+    }
+  }
+
+  function startLenisScroll() {
+    var lenis = getLenisInstance();
+    if (!lenis || typeof lenis.start !== "function") return;
+    try {
+      lenis.start();
+    } catch (e) {
+      debugLog("pre-fix", "H4", "preloader.js:startLenisScroll", "lenis.start failed", {
+        error: String(e && e.message || e)
+      });
+    }
   }
 
   function resetPreloaderState() {
@@ -60,6 +89,7 @@
   function lockScroll() {
     if (preloaderActive) return;
     preloaderActive = true;
+    lockedScrollLogged = false;
     scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
     debugLog("pre-fix", "H4", "preloader.js:lockScroll", "lockScroll called", {
       scrollPosition: scrollPosition,
@@ -68,19 +98,24 @@
     });
     document.body.style.top = "-" + scrollPosition + "px";
     document.body.classList.add("no-scroll");
+    stopLenisScroll();
   }
 
-  function unlockScroll() {
+  function unlockScroll(options) {
+    var opts = options || {};
+    var shouldRestoreScroll = !!opts.restoreScroll;
     debugLog("pre-fix", "H5", "preloader.js:unlockScroll:before", "unlockScroll before restore", {
       savedScrollPosition: scrollPosition,
       currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
-      bodyNoScrollBefore: document.body.classList.contains("no-scroll")
+      bodyNoScrollBefore: document.body.classList.contains("no-scroll"),
+      shouldRestoreScroll: shouldRestoreScroll
     });
     preloaderActive = false;
     animationStarted = false;
     document.body.classList.remove("no-scroll");
     document.body.style.top = "";
-    window.scrollTo(0, scrollPosition);
+    if (shouldRestoreScroll) window.scrollTo(0, scrollPosition);
+    startLenisScroll();
     debugLog("pre-fix", "H5", "preloader.js:unlockScroll:after", "unlockScroll after restore", {
       savedScrollPosition: scrollPosition,
       currentScrollY: window.pageYOffset || document.documentElement.scrollTop,
@@ -139,6 +174,19 @@
       hasBarbaContainer: !!document.querySelector("[data-barba='container']")
     });
     if (!shouldRun) return;
+    if (firstLoadInitStarted) {
+      debugLog("pre-fix", "H1", "preloader.js:initPreloader", "initPreloader skipped because first load already started", {
+        readyState: document.readyState
+      });
+      return;
+    }
+    firstLoadInitStarted = true;
+    var els = getPreloaderEls();
+    if (els.preloader) {
+      /* Ensure first load starts from a visible overlay state. */
+      els.preloader.classList.remove("load", "close", "icon-hide", "blur", "end");
+      els.preloader.classList.add("active");
+    }
     lockScroll();
     requestAnimationFrame(startPreloaderAnimation);
   }
@@ -301,6 +349,7 @@
   window.addEventListener("load", initPreloader);
   window.addEventListener("pageshow", function (ev) {
     if (ev.persisted) {
+      firstLoadInitStarted = false;
       resetPreloaderState();
       initPreloader();
     }
