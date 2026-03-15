@@ -1,1 +1,13 @@
-document.getElementById("upper-bttn").addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})}),document.getElementById("upper-bttn-2").addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})}),document.getElementById("scroll-to-roles").addEventListener("click",function(){let e=document.getElementById("jobs");e&&e.scrollIntoView({behavior:"smooth"})});
+  const upper1 = document.getElementById("upper-bttn");
+  const upper2 = document.getElementById("upper-bttn-2");
+  const rolesBtn = document.getElementById("scroll-to-roles");
+  upper1?.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  upper2?.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  rolesBtn?.addEventListener("click", () => {
+    const jobs = document.getElementById("jobs");
+    jobs?.scrollIntoView({ behavior: "smooth" });
+  });
