@@ -1,4 +1,4 @@
-/**
+**
  * Preloader: анимация при первой загрузке и при переходах (Barba).
  * Подключать до основного контента для отсутствия мигания.
  */
@@ -21,7 +21,7 @@ body.no-scroll {
 
 .page-wrapper.transition-blur,
 .page-wrapper.blur {
-  filter: none !important;
+  filter: blur(16px) !important;
 }
 
 .page-wrapper.load {
@@ -37,7 +37,7 @@ body.no-scroll {
 
 [data-barba="wrapper"].transition-blur,
 [data-barba="wrapper"].blur {
-  filter: none !important;
+  filter: blur(16px) !important;
 }
 
 [data-barba="wrapper"].load {
@@ -46,14 +46,12 @@ body.no-scroll {
 
 /* Прелоадер: оверлей */
 #preloader,
-.preloader-wrapper,
 .page-wrapper,
 .preloader-icon {
   will-change: opacity, filter, transform;
 }
 
-#preloader,
-.preloader-wrapper {
+#preloader {
   display: flex;
   position: fixed;
   inset: 0;
@@ -68,50 +66,41 @@ body.no-scroll {
 }
 
 /* Состояние: первая загрузка — прелоадер виден, иконка крутится */
-#preloader.active,
-.preloader-wrapper.active {
+#preloader.active {
   opacity: 1;
   pointer-events: auto;
 }
 
 /* Этап 1 перехода: blur контента, но preloader уже блокирует клики */
-#preloader.blur,
-.preloader-wrapper.blur {
-  opacity: 1;
+#preloader.blur {
+  opacity: 0;
   pointer-events: auto;
-  background: rgba(1, 1, 4, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: transparent;
 }
 
 /* Этап 2 перехода: чёрный экран и видимая иконка */
 #preloader.end,
-#preloader.cover,
-.preloader-wrapper.end,
-.preloader-wrapper.cover {
+#preloader.cover {
   opacity: 1;
   pointer-events: auto;
   background: var(--black-1000, #010104);
 }
 
 /* Состояние: уход чёрного (reveal новой страницы) */
-#preloader.reveal,
-.preloader-wrapper.reveal {
+#preloader.reveal {
   opacity: 0;
   pointer-events: auto;
 }
 
 /* Состояние: скрытие прелоадера после анимации */
-#preloader.load,
-.preloader-wrapper.load {
+#preloader.load {
   background: transparent;
   opacity: 0;
   pointer-events: none;
 }
 
 /* Иконка-спиннер 4×4rem */
-#preloader .preloader-icon,
-.preloader-wrapper .preloader-icon {
+#preloader .preloader-icon {
   width: 4rem;
   height: 4rem;
   flex-shrink: 0;
@@ -135,14 +124,12 @@ body.no-scroll {
 }
 
 /* Скрытие иконки только при уходе прелоадера (фаза reveal), не при cover — при переходе иконка крутится на чёрном */
-#preloader.load.icon-hide .preloader-icon,
-.preloader-wrapper.load.icon-hide .preloader-icon {
+#preloader.load.icon-hide .preloader-icon {
   opacity: 0;
 }
 
 /* Полное скрытие прелоадера */
-#preloader.close,
-.preloader-wrapper.close {
+#preloader.close {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
