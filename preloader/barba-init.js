@@ -1,4 +1,4 @@
-**
+/**
  * Unified Barba initialization for all pages.
  * Reuses preloader transition hooks exposed by preloader.js.
  */
