@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
         clearTimeout(openBannerTimer);
         openBannerTimer = null;
       }
-      wrapper?.classList.add("close");
+      wrapper?.classList.remove("show");
       loadEssential();
       if (consent.analytics) loadAnalytics();
       if (consent.marketing) loadMarketing();
@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!wrapper) return;
       if (openBannerTimer) clearTimeout(openBannerTimer);
       openBannerTimer = setTimeout(() => {
-        wrapper.classList.remove("close");
+        wrapper.classList.add("show");
         openBannerTimer = null;
       }, BANNER_SHOW_DELAY_MS);
     }
