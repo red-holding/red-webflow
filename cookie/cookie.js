@@ -2,7 +2,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   const CONSENT_API_URL = "https://red-webflow-cookie-consent.general-407.workers.dev/api/consent";
   const LOCAL_STORAGE_KEY = "cookieConsent";
-  const BANNER_SHOW_DELAY_MS = 1650;
+  const BANNER_SHOW_DELAY_MS = 2500;
   let openBannerTimer = null;
 
   const defaultConsent = {
@@ -19,40 +19,60 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   function runDeferredScript(script) {
-    if (script.dataset.cookieLoaded === "1") return;
-    script.dataset.cookieLoaded = "1";
-    script.type = "text/javascript";
-    if (script.dataset.src) {
-      script.src = script.dataset.src;
-      script.removeAttribute("data-src");
-    }
-    if (script.textContent) {
-      // Kept for backward compatibility with inline deferred snippets.
-      eval(script.textContent);
-    }
+    if (script.dataset.cookieLoaded === "1") return Promise.resolve();
+
+    return new Promise((resolve) => {
+      script.dataset.cookieLoaded = "1";
+      script.type = "text/javascript";
+
+      const deferredSrc = script.dataset.src || "";
+      if (deferredSrc) {
+        const done = () => {
+          script.removeEventListener("load", done);
+          script.removeEventListener("error", done);
+          resolve();
+        };
+        script.addEventListener("load", done, { once: true });
+        script.addEventListener("error", done, { once: true });
+        // Force ordered execution for deferred dependency chains.
+        script.async = false;
+        script.src = deferredSrc;
+        script.removeAttribute("data-src");
+        return;
+      }
+
+      if (script.textContent) {
+        // Kept for backward compatibility with inline deferred snippets.
+        eval(script.textContent);
+      }
+      resolve();
+    });
   }
 
-  function loadEssential() {
+  async function loadEssential() {
     if (scriptLoadState.essential) return;
-    document
-      .querySelectorAll('script[data-cookie-load="essential"]')
-      .forEach(runDeferredScript);
+    const scripts = document.querySelectorAll('script[data-cookie-load="essential"]');
+    for (const script of scripts) {
+      await runDeferredScript(script);
+    }
     scriptLoadState.essential = true;
   }
 
-  function loadAnalytics() {
+  async function loadAnalytics() {
     if (scriptLoadState.analytics) return;
-    document
-      .querySelectorAll('script[data-cookie-category="analytics"]')
-      .forEach(runDeferredScript);
+    const scripts = document.querySelectorAll('script[data-cookie-category="analytics"]');
+    for (const script of scripts) {
+      await runDeferredScript(script);
+    }
     scriptLoadState.analytics = true;
   }
 
-  function loadMarketing() {
+  async function loadMarketing() {
     if (scriptLoadState.marketing) return;
-    document
-      .querySelectorAll('script[data-cookie-category="marketing"]')
-      .forEach(runDeferredScript);
+    const scripts = document.querySelectorAll('script[data-cookie-category="marketing"]');
+    for (const script of scripts) {
+      await runDeferredScript(script);
+    }
     scriptLoadState.marketing = true;
   }
 
@@ -64,9 +84,9 @@ document.addEventListener("DOMContentLoaded", function () {
         openBannerTimer = null;
       }
       wrapper?.classList.remove("show");
-      loadEssential();
-      if (consent.analytics) loadAnalytics();
-      if (consent.marketing) loadMarketing();
+      void loadEssential();
+      if (consent.analytics) void loadAnalytics();
+      if (consent.marketing) void loadMarketing();
     } else {
       if (!wrapper) return;
       if (openBannerTimer) clearTimeout(openBannerTimer);
