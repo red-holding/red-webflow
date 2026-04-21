@@ -2,6 +2,8 @@
 document.addEventListener("DOMContentLoaded", function () {
   const CONSENT_API_URL = "https://red-webflow-cookie-consent.general-407.workers.dev/api/consent";
   const LOCAL_STORAGE_KEY = "cookieConsent";
+  const BANNER_SHOW_DELAY_MS = 2500;
+  let openBannerTimer = null;
 
   const defaultConsent = {
     necessary: true,
@@ -57,12 +59,21 @@ document.addEventListener("DOMContentLoaded", function () {
   function applyConsent(consent) {
     const wrapper = document.querySelector(".cookie-wrapper");
     if (consent.saved) {
+      if (openBannerTimer) {
+        clearTimeout(openBannerTimer);
+        openBannerTimer = null;
+      }
       wrapper?.classList.add("close");
       loadEssential();
       if (consent.analytics) loadAnalytics();
       if (consent.marketing) loadMarketing();
     } else {
-      wrapper?.classList.add("show");
+      if (!wrapper) return;
+      if (openBannerTimer) clearTimeout(openBannerTimer);
+      openBannerTimer = setTimeout(() => {
+        wrapper.classList.remove("close");
+        openBannerTimer = null;
+      }, BANNER_SHOW_DELAY_MS);
     }
   }
 
