@@ -227,7 +227,10 @@ document.addEventListener("DOMContentLoaded", function () {
       if (consent?.saved) {
         saveConsentToLocalStorage(consent);
       }
-      applyConsent({ ...defaultConsent, ...consent });
+      const resolvedConsent = localConsent?.saved
+        ? { ...defaultConsent, ...consent, ...localConsent }
+        : { ...defaultConsent, ...consent };
+      applyConsent(resolvedConsent);
     } catch (error) {
       console.error("Cookie consent load failed:", error);
       applyConsent(localConsent ? { ...defaultConsent, ...localConsent } : defaultConsent);
