@@ -1,1 +1,110 @@
-!function(){function e(){let e=document.querySelectorAll('[jobs="item"]');if(!e.length)return;let t=new Map,n=null;function l(e,t,n=800){return new Promise(l=>{let o=parseFloat(e.style.height)||0,i=performance.now();function r(a){let c=Math.min((a-i)/n,1);e.style.height=o+(t-o)*c+"px",c<1?requestAnimationFrame(r):(e.style.height=t+"px",l())}requestAnimationFrame(r)})}async function o(e){let n=e.querySelector('[jobs="more-text"]');if(!n)return;let o=t.get(e);o&&(e.classList.add("active"),await l(n,o.full))}async function i(e){let n=e.querySelector('[jobs="more-text"]');if(!n)return;let o=t.get(e);o&&(e.classList.remove("active"),await l(n,o.closed))}e.forEach(e=>{let n=e.querySelector('[jobs="more-text"]');n&&(n.style.overflow="hidden",n.style.height="0px",t.set(e,{closed:0,full:n.scrollHeight}))}),e.forEach(e=>{let t=e.querySelector('[jobs="open-bttn"]');t&&t.addEventListener("click",async l=>{if(l.preventDefault(),n===e)await i(e),t.textContent="Развернуть вакансию",n=null;else{if(n){let r=n.querySelector('[jobs="open-bttn"]');await i(n),r&&(r.textContent="Развернуть вакансию")}await o(e),t.textContent="Свернуть вакансию",n=e}})})}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",e,{once:!0}):e()}();
+(function () {
+  function initJobs() {
+    const items = document.querySelectorAll('[jobs="item"]');
+    if (!items.length) return;
+
+    const map = new Map(); // item → { closed, full }
+    let activeItem = null;
+
+    // Анимация изменения высоты
+    function animateHeight(el, targetHeight, duration = 800) {
+      return new Promise((resolve) => {
+        const startHeight = parseFloat(el.style.height) || 0;
+        const startTime = performance.now();
+
+        function step(now) {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const currentHeight = startHeight + (targetHeight - startHeight) * progress;
+
+          el.style.height = currentHeight + "px";
+
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          } else {
+            el.style.height = targetHeight + "px";
+            resolve();
+          }
+        }
+
+        requestAnimationFrame(step);
+      });
+    }
+
+    // Развернуть блок
+    async function openItem(item) {
+      const moreText = item.querySelector('[jobs="more-text"]');
+      if (!moreText) return;
+
+      const data = map.get(item);
+      if (!data) return;
+
+      item.classList.add("active");
+      await animateHeight(moreText, data.full);
+    }
+
+    // Свернуть блок
+    async function closeItem(item) {
+      const moreText = item.querySelector('[jobs="more-text"]');
+      if (!moreText) return;
+
+      const data = map.get(item);
+      if (!data) return;
+
+      item.classList.remove("active");
+      await animateHeight(moreText, data.closed);
+    }
+
+    // Инициализация высоты more-text
+    items.forEach((item) => {
+      const moreText = item.querySelector('[jobs="more-text"]');
+      if (!moreText) return;
+
+      moreText.style.overflow = "hidden";
+      moreText.style.height = "0px";
+
+      map.set(item, {
+        closed: 0,
+        full: moreText.scrollHeight, // элемент должен быть видим, чтобы scrollHeight корректно считался
+      });
+    });
+
+    // Обработчики кнопок
+    items.forEach((item) => {
+      const btn = item.querySelector('[jobs="open-bttn"]');
+      if (!btn) return;
+
+      btn.addEventListener("click", async (event) => {
+        event.preventDefault();
+
+        if (activeItem === item) {
+          // Сворачиваем текущий
+          await closeItem(item);
+          btn.textContent = "Развернуть вакансию";
+          activeItem = null;
+        } else {
+          // Если уже есть активный — сворачиваем его
+          if (activeItem) {
+            const activeBtn = activeItem.querySelector('[jobs="open-bttn"]');
+            await closeItem(activeItem);
+            if (activeBtn) {
+              activeBtn.textContent = "Развернуть вакансию";
+            }
+          }
+
+          // Разворачиваем текущий
+          await openItem(item);
+          btn.textContent = "Свернуть вакансию";
+          activeItem = item;
+        }
+      });
+    });
+  }
+
+  // Запускаем при DOM или сразу
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initJobs, { once: true });
+  } else {
+    initJobs();
+  }
+})();
