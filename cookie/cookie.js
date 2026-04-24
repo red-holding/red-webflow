@@ -2,7 +2,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   const CONSENT_API_URL = "https://red-webflow-cookie-consent.general-407.workers.dev/api/consent";
   const LOCAL_STORAGE_KEY = "cookieConsent";
-  const BANNER_SHOW_DELAY_MS = 1650;
+  const BANNER_SHOW_DELAY_MS = 650;
   let openBannerTimer = null;
 
   const defaultConsent = {
